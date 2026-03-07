@@ -22,19 +22,26 @@ export class CourseController {
           return;
         }
 
-        // Check registration deadline
-        const registrationDeadline = await prisma.registrationRule.findFirst({
-          where: { rule_name: "REGISTRATION_DEADLINE", is_active: true },
+        // Check if registration is open (check active phase)
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        const semesterType = currentMonth >= 7 ? 1 : 2;
+
+        const activePhase = await prisma.registrationPhase.findFirst({
+          where: {
+            academic_year: currentYear,
+            semester_type: semesterType,
+            is_enabled: true,
+            start_date: { lte: now },
+            end_date: { gte: now },
+          },
         });
 
-        const isRegistrationOpen = registrationDeadline && registrationDeadline.rule_value
-          ? new Date(registrationDeadline.rule_value) > new Date()
-          : true;
-
-        if (!isRegistrationOpen) {
+        if (!activePhase) {
           res.status(403).json({ 
-            error: "Registration window closed",
-            deadline: registrationDeadline?.rule_value,
+            error: "Registration is currently closed. No active registration phase.",
+            message: "Please contact administration or wait for the registration window to open.",
           });
           return;
         }
@@ -56,15 +63,14 @@ export class CourseController {
           include: { course: true },
         });
 
-        // Get current registrations
-        const currentYear = new Date().getFullYear();
-        const semesterType = student.current_semester % 2 === 1 ? 1 : 2;
+        // Get current registrations (reuse currentYear and semesterType from above)
+        const studentSemesterType = student.current_semester % 2 === 1 ? 1 : 2;
 
         const registrations = await prisma.courseRegistration.findMany({
           where: {
             enrollment_no: enrollmentNo,
             academic_year: currentYear,
-            semester_type: semesterType,
+            semester_type: studentSemesterType,
             deleted_at: null,
           },
         });
@@ -225,10 +231,8 @@ export class CourseController {
           electiveGroups,
           filter,
           deadlines: {
-            registration: registrationDeadline?.rule_value || null,
-            modification: await prisma.registrationRule.findFirst({
-              where: { rule_name: "MODIFICATION_DEADLINE", is_active: true },
-            }).then(r => r?.rule_value || null),
+            currentPhase: activePhase.phase_label,
+            phaseEndDate: activePhase.end_date,
           },
         });
       } catch (error) {
@@ -257,6 +261,30 @@ export class CourseController {
         return;
       }
 
+      // Check if registration is open (check active phase)
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const semesterType = currentMonth >= 7 ? 1 : 2;
+
+      const activePhase = await prisma.registrationPhase.findFirst({
+        where: {
+          academic_year: currentYear,
+          semester_type: semesterType,
+          is_enabled: true,
+          start_date: { lte: now },
+          end_date: { gte: now },
+        },
+      });
+
+      if (!activePhase) {
+        res.status(403).json({ 
+          error: "Registration is currently closed",
+          message: "No active registration phase. Please contact administration.",
+        });
+        return;
+      }
+
       // Get student details
       const student = await prisma.student.findUnique({
         where: { enrollment_no: enrollmentNo },
@@ -268,15 +296,24 @@ export class CourseController {
         return;
       }
 
-      const currentYear = new Date().getFullYear();
-      // Odd semesters (1,3,5,7) = type 1, Even semesters (2,4,6,8) = type 2
-      const semesterType = student.current_semester % 2 === 1 ? 1 : 2;
+      // Use student's current semester for registration
+      const studentSemesterType = student.current_semester % 2 === 1 ? 1 : 2;
 
       const registered: any[] = [];
       const errors: any[] = [];
 
+      console.log(`📝 Processing ${courses.length} course(s) for registration:`, 
+        courses.map(c => `${c.courseCode} (${c.registrationType})`).join(', ')
+      );
+
+      // Get current credits ONCE before the loop (not inside the loop)
+      const initialCredits = await calculateCurrentCredits(enrollmentNo);
+      console.log(`💳 Initial credits before batch: ${initialCredits}`);
+
       for (const courseData of courses) {
         const { courseCode, registrationType = 'regular' } = courseData;
+
+        console.log(`\n🔍 Processing: ${courseCode} (${registrationType})`);
 
         try {
           // Get course details
@@ -285,9 +322,12 @@ export class CourseController {
           });
 
           if (!course) {
+            console.log(`❌ Course not found: ${courseCode}`);
             errors.push({ courseCode, error: "Course not found" });
             continue;
           }
+
+          console.log(`✅ Course found: ${course.course_name}`);
 
           // Check if already registered (exclude soft-deleted)
           const existingRegistration = await prisma.courseRegistration.findFirst({
@@ -295,7 +335,7 @@ export class CourseController {
               enrollment_no: enrollmentNo,
               course_code: courseCode,
               academic_year: currentYear,
-              semester_type: semesterType,
+              semester_type: studentSemesterType,
               deleted_at: null, // Only check active registrations
             },
           });
@@ -305,30 +345,37 @@ export class CourseController {
             continue;
           }
 
-          // Validation 1: Check prerequisites
-          const prereqCheck = await checkPrerequisites(enrollmentNo, courseCode);
-          if (!prereqCheck.met) {
-            errors.push({
-              courseCode,
-              error: "Prerequisites not met",
-              missing: prereqCheck.missing,
-            });
-            continue;
+          // Validation 1: Check prerequisites (skip for backlog/improvement)
+          if (registrationType === 'regular') {
+            const prereqCheck = await checkPrerequisites(enrollmentNo, courseCode);
+            if (!prereqCheck.met) {
+              errors.push({
+                courseCode,
+                error: "Prerequisites not met",
+                missing: prereqCheck.missing,
+              });
+              continue;
+            }
           }
 
-          // Validation 2: Check credit limit (calculate with all selected courses)
-          const currentCredits = await calculateCurrentCredits(enrollmentNo);
-          const selectedCredits = courses.reduce((sum, c) => {
-            const courseInList = registered.find(r => r.courseCode === c.courseCode);
-            return sum + (courseInList?.credits || 0);
-          }, 0);
+          // Validation 2: Check credit limit
+          // Use initialCredits (from before loop) + batchCredits (from this batch)
+          const batchCredits = registered.reduce((sum, r) => sum + r.credits, 0);
           
-          if (currentCredits + selectedCredits + course.credits > 40) {
+          if (initialCredits + batchCredits + course.credits > 40) {
+            console.log(`❌ Credit limit exceeded for ${courseCode}:`, {
+              initialCredits,
+              batchCredits,
+              courseCredits: course.credits,
+              total: initialCredits + batchCredits + course.credits,
+              maxCredits: 40,
+            });
+            
             errors.push({
               courseCode,
               error: "Credit limit exceeded",
-              currentCredits,
-              selectedCredits,
+              initialCredits,
+              batchCredits,
               courseCredits: course.credits,
               maxCredits: 40,
             });
@@ -341,7 +388,7 @@ export class CourseController {
               enrollment_no: enrollmentNo,
               course_code: courseCode,
               academic_year: currentYear,
-              semester_type: semesterType,
+              semester_type: studentSemesterType,
               registration_type: registrationType,
               is_approved: true, // Auto-approve
             },

@@ -26,8 +26,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from 'react';
-import api from '@/services/api';
+import { useState, useEffect } from 'react';
+import api, { getCurrentPhase } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import type { StudentDashboardData, Course } from '@/services/api';
 
@@ -50,16 +50,34 @@ interface DashboardOverviewProps {
 }
 
 const DashboardOverview = ({ onNavigateToRegistration, dashboardData, courses }: DashboardOverviewProps) => {
-  const { user, studentData, isRegistrationEnabled } = useAuth();
+  const { user, studentData } = useAuth();
   const { toast } = useToast();
   const [courseToDelete, setCourseToDelete] = useState<RegisteredCourse | null>(null);
   const [isDropping, setIsDropping] = useState(false);
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState<any>(null);
   
   // Use dashboardData from API if available, fallback to context
   const displayData = dashboardData || studentData;
   const displayName = dashboardData?.name || user?.name || 'Student';
   const earnedCredits = (dashboardData as any)?.earnedCredits || displayData?.totalCredits || 0;
   const creditProgress = earnedCredits ? (earnedCredits / 160) * 100 : 0;
+
+  // Check for active registration phase
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      try {
+        const response = await getCurrentPhase();
+        setCurrentPhase(response.currentPhase);
+        setIsRegistrationOpen(response.isOpen);
+      } catch (error) {
+        console.error('Error checking registration status:', error);
+        setIsRegistrationOpen(false);
+      }
+    };
+
+    checkRegistrationStatus();
+  }, []);
 
   // Get registered courses from dashboard data
   const registeredCourses: RegisteredCourse[] = (dashboardData as any)?.registeredCourses || [];
@@ -224,26 +242,6 @@ const DashboardOverview = ({ onNavigateToRegistration, dashboardData, courses }:
               </div>
             ))}
           </div>
-
-          <div className="mt-4 p-3 rounded-lg bg-muted/30 flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-            <div className="text-xs text-muted-foreground">
-              {deadlines.canModify ? (
-                <>
-                  You can drop courses before the modification deadline.
-                  {daysUntilModificationDeadline !== null && daysUntilModificationDeadline > 0 && (
-                    <span className="font-semibold text-secondary ml-1">
-                      ({daysUntilModificationDeadline} days remaining)
-                    </span>
-                  )}
-                </>
-              ) : (
-                <span className="text-destructive font-semibold">
-                  Modification deadline has passed. You can no longer drop courses.
-                </span>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -286,9 +284,11 @@ const DashboardOverview = ({ onNavigateToRegistration, dashboardData, courses }:
             <div>
               <h3 className="font-bold text-base sm:text-lg text-foreground">Ready to Register?</h3>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                {isRegistrationEnabled 
-                  ? `Registration window is open for Semester ${(displayData?.currentSemester || 0) + 1}`
-                  : 'Registration not opened by faculty yet.'
+                {isRegistrationOpen 
+                  ? currentPhase 
+                    ? `${currentPhase.phase_label} - Registration is open`
+                    : `Registration window is open for Semester ${(displayData?.currentSemester || 0) + 1}`
+                  : 'Registration is currently closed. Please check back later.'
                 }
               </p>
             </div>
@@ -297,9 +297,9 @@ const DashboardOverview = ({ onNavigateToRegistration, dashboardData, courses }:
             size="lg" 
             className="rounded-full px-6 sm:px-8 group w-full sm:w-auto" 
             onClick={onNavigateToRegistration}
-            disabled={!isRegistrationEnabled}
+            disabled={!isRegistrationOpen}
           >
-            {isRegistrationEnabled ? (
+            {isRegistrationOpen ? (
               <>
                 Register
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />

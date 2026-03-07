@@ -392,31 +392,26 @@ const FacultyDashboard = () => {
 
           {/* Registration Control & Quick Actions */}
           <div className="grid gap-3 sm:gap-6 lg:grid-cols-2">
-            {/* Registration Control */}
-            <div className={`glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 ${isRegistrationEnabled ? 'border-primary/30 bg-primary/5' : 'border-border'}`}>
+            {/* Registration Control - Now managed via Registration Control Panel */}
+            <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-primary/30 bg-primary/5">
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="flex items-center gap-2 sm:gap-3">
-                  {isRegistrationEnabled ? (
-                    <Unlock className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                  ) : (
-                    <Lock className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
-                  )}
-                  <h3 className="font-bold text-sm sm:text-lg text-foreground">Registration</h3>
+                  <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                  <h3 className="font-bold text-sm sm:text-lg text-foreground">Registration Control</h3>
                 </div>
-                <Switch 
-                  checked={isRegistrationEnabled} 
-                  onCheckedChange={setIsRegistrationEnabled}
-                />
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
-                {isRegistrationEnabled 
-                  ? 'Students can register for courses.' 
-                  : 'Registration closed for students.'
-                }
+                Manage registration phases and deadlines through the Registration Control Panel.
               </p>
-              <Badge className={`text-[10px] sm:text-xs ${isRegistrationEnabled ? 'bg-primary/10 text-primary border-0' : 'bg-muted text-muted-foreground border-0'}`}>
-                {isRegistrationEnabled ? 'Open' : 'Closed'}
-              </Badge>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="rounded-lg text-xs"
+                onClick={() => setActiveTab('registration-control')}
+              >
+                Open Control Panel
+                <ArrowRight className="ml-2 h-3 w-3" />
+              </Button>
             </div>
 
             {/* Quick Actions */}

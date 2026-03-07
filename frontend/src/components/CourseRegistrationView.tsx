@@ -76,6 +76,7 @@ const CourseRegistrationView = ({ onBack }: CourseRegistrationViewProps) => {
   const [eligibleCourses, setEligibleCourses] = useState<Course[]>([]);
   const [backlogCourses, setBacklogCourses] = useState<Course[]>([]);
   const [improvementCourses, setImprovementCourses] = useState<Course[]>([]);
+  const [courseRegistrationTypes, setCourseRegistrationTypes] = useState<Map<string, string>>(new Map()); // Track registration type for each selected course
 
   const maxCredits = 40;
   
@@ -125,8 +126,10 @@ const CourseRegistrationView = ({ onBack }: CourseRegistrationViewProps) => {
       const improvementData = improvementResponse.data.courses || [];
       setImprovementCourses(improvementData);
       
-      // Auto-select ALL eligible courses (both mandatory and elective)
-      const autoSelected = eligibleData.map((c: Course) => c.courseCode);
+      // Auto-select only mandatory courses (where isAutoSelected is true)
+      const autoSelected = eligibleData
+        .filter((c: Course) => c.isAutoSelected === true)
+        .map((c: Course) => c.courseCode);
       setSelectedCourses(autoSelected);
       
       console.log('📚 All courses loaded:', {
@@ -134,6 +137,7 @@ const CourseRegistrationView = ({ onBack }: CourseRegistrationViewProps) => {
         backlog: backlogData.length,
         improvement: improvementData.length,
         autoSelected: autoSelected.length,
+        electives: eligibleData.filter((c: Course) => c.isElective).length,
       });
     } catch (error: any) {
       console.error('Error fetching courses:', error);
@@ -162,27 +166,71 @@ const CourseRegistrationView = ({ onBack }: CourseRegistrationViewProps) => {
       default:
         setCourses(eligibleCourses);
     }
+    
+    console.log('📊 Course lists updated:', {
+      filter,
+      displayedCount: courses.length,
+      eligibleCount: eligibleCourses.length,
+      backlogCount: backlogCourses.length,
+      improvementCount: improvementCourses.length,
+    });
   };
 
   const toggleCourse = (courseCode: string, course: Course) => {
-    // Check if this is an eligible course (cannot be deselected)
-    const isEligibleCourse = eligibleCourses.some(c => c.courseCode === courseCode);
+    // Check if this is a mandatory course (cannot be deselected)
+    const mandatoryCourse = eligibleCourses.find(c => c.courseCode === courseCode);
     
-    if (isEligibleCourse) {
+    if (mandatoryCourse && mandatoryCourse.isAutoSelected) {
       toast({
         title: 'Cannot deselect',
-        description: 'Eligible courses are mandatory for registration',
+        description: 'Mandatory courses must be registered',
         variant: 'destructive',
       });
       return;
     }
     
-    // Toggle selection for backlog/improvement courses
-    setSelectedCourses(prev => 
-      prev.includes(courseCode) 
+    // Determine registration type based on which array the course belongs to
+    let registrationType = 'regular';
+    if (backlogCourses.some(c => c.courseCode === courseCode)) {
+      registrationType = 'backlog';
+    } else if (improvementCourses.some(c => c.courseCode === courseCode)) {
+      registrationType = 'improvement';
+    } else if (eligibleCourses.some(c => c.courseCode === courseCode)) {
+      registrationType = 'regular';
+    }
+    
+    // Toggle selection for elective, backlog, and improvement courses
+    setSelectedCourses(prev => {
+      const isCurrentlySelected = prev.includes(courseCode);
+      const newSelection = isCurrentlySelected 
         ? prev.filter(id => id !== courseCode)
-        : [...prev, courseCode]
-    );
+        : [...prev, courseCode];
+      
+      // Update the registration type map
+      setCourseRegistrationTypes(prevTypes => {
+        const newTypes = new Map(prevTypes);
+        if (!isCurrentlySelected) {
+          // Adding course - store its registration type
+          newTypes.set(courseCode, registrationType);
+        } else {
+          // Removing course - delete from map
+          newTypes.delete(courseCode);
+        }
+        
+        console.log('🔄 Toggle course:', {
+          courseCode,
+          registrationType,
+          wasSelected: isCurrentlySelected,
+          nowSelected: !isCurrentlySelected,
+          mapSize: newTypes.size,
+          mapEntries: Array.from(newTypes.entries()),
+        });
+        
+        return newTypes;
+      });
+      
+      return newSelection;
+    });
   };
 
   const handleRegister = async () => {
@@ -198,22 +246,43 @@ const CourseRegistrationView = ({ onBack }: CourseRegistrationViewProps) => {
     try {
       setRegistering(true);
       
-      // Map courses to their registration types
-      // Map selected courses to their registration types from all course lists
+      // Map courses to their registration types using the stored Map
       const coursesToRegister = selectedCourses.map(courseCode => {
-        // Find course in eligible, backlog, or improvement lists
-        const course = [...eligibleCourses, ...backlogCourses, ...improvementCourses]
-          .find(c => c.courseCode === courseCode);
+        const registrationType = courseRegistrationTypes.get(courseCode) || 'regular';
+        
+        // Find course details for logging
+        const courseDetails = 
+          eligibleCourses.find(c => c.courseCode === courseCode) ||
+          backlogCourses.find(c => c.courseCode === courseCode) ||
+          improvementCourses.find(c => c.courseCode === courseCode);
         
         return {
           courseCode,
-          registrationType: course?.registrationType || 'regular',
+          registrationType,
+          courseName: courseDetails?.courseName,
+          credits: courseDetails?.credits,
         };
       });
 
-      const response = await api.post('/api/courses/register', {
-        courses: coursesToRegister,
+      console.log('🎯 Registering courses:', {
+        totalSelected: selectedCourses.length,
+        coursesToRegister,
+        registrationTypeMap: Array.from(courseRegistrationTypes.entries()),
+        breakdown: {
+          regular: coursesToRegister.filter(c => c.registrationType === 'regular').length,
+          backlog: coursesToRegister.filter(c => c.registrationType === 'backlog').length,
+          improvement: coursesToRegister.filter(c => c.registrationType === 'improvement').length,
+        },
       });
+
+      const response = await api.post('/api/courses/register', {
+        courses: coursesToRegister.map(c => ({
+          courseCode: c.courseCode,
+          registrationType: c.registrationType,
+        })),
+      });
+
+      console.log('✅ Registration response:', response.data);
 
       toast({
         title: 'Registration Successful',
@@ -223,7 +292,8 @@ const CourseRegistrationView = ({ onBack }: CourseRegistrationViewProps) => {
       // Navigate back to dashboard to show registered courses
       onBack();
     } catch (error: any) {
-      console.error('Error registering courses:', error);
+      console.error('❌ Error registering courses:', error);
+      console.error('Error response:', error.response?.data);
       toast({
         title: 'Registration Failed',
         description: error.response?.data?.error || 'Failed to register courses',
@@ -415,7 +485,7 @@ const CourseRegistrationView = ({ onBack }: CourseRegistrationViewProps) => {
                     <div className="flex items-start gap-2">
                       <Checkbox
                         checked={selectedCourses.includes(course.courseCode)}
-                        disabled={eligibleCourses.some(c => c.courseCode === course.courseCode)}
+                        disabled={course.isAutoSelected === true}
                         className="h-4 w-4 mt-0.5 shrink-0"
                       />
                       <div className="flex-1 min-w-0">
@@ -442,7 +512,7 @@ const CourseRegistrationView = ({ onBack }: CourseRegistrationViewProps) => {
                     <div className="col-span-1">
                       <Checkbox
                         checked={selectedCourses.includes(course.courseCode)}
-                        disabled={eligibleCourses.some(c => c.courseCode === course.courseCode)}
+                        disabled={course.isAutoSelected === true}
                         className="h-5 w-5"
                       />
                     </div>

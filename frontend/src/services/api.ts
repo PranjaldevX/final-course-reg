@@ -634,8 +634,17 @@ export const previewCSV = async (file: File): Promise<{
  */
 export const getErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
-    const apiError = error.response?.data as ApiError | undefined;
-    return apiError?.message || error.message || 'An unexpected error occurred';
+    // Check if there's a response from the server
+    if (error.response?.data) {
+      const apiError = error.response.data as any;
+      // Backend sends errors as { error: "message" } or { message: "message" }
+      return apiError.error || apiError.message || 'An unexpected error occurred';
+    }
+    // Network error or no response from server
+    if (error.code === 'ERR_NETWORK' || !error.response) {
+      return 'Unable to connect to server. Please check your connection.';
+    }
+    return error.message || 'An unexpected error occurred';
   }
   if (error instanceof Error) {
     return error.message;
