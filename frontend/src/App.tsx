@@ -7,7 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PageTransition from "@/components/PageTransition";
 import Index from "./pages/Index";
-import RegisterWithOTP from "./pages/RegisterWithOTP";
+import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
@@ -24,7 +24,7 @@ const App = () => (
           <PageTransition>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/register" element={<RegisterWithOTP />} />
+              <Route path="/register" element={<Register />} />
               <Route path="/login" element={<Login />} />
               <Route 
                 path="/dashboard" 
