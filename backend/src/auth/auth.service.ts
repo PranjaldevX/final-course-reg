@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { EmailService } from "../services/email.service";
 import {
   extractEnrollmentNo,
   isInstitutionalEmail,
@@ -33,6 +34,7 @@ import {
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
+const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || "5");
 
 export class AuthService {
   static async requestOtp(email: string): Promise<MessageResponse> {
@@ -49,7 +51,12 @@ export class AuthService {
     });
 
     if (!student) {
-      throw new Error("Student record not found");
+      throw new Error("Student record not found. Please contact admin.");
+    }
+
+    // Check if already has password
+    if (student.password_hash) {
+      throw new Error("Account already activated. Please use login.");
     }
 
     // Check if OTP already exists and hasn't expired
@@ -73,10 +80,17 @@ export class AuthService {
       createdAt: new Date(),
     });
 
-    // Log OTP to console
-    logOtpToConsole(email, otp, expiresAt);
+    // Send OTP via email (SendGrid)
+    try {
+      await EmailService.sendOtpEmail(email, otp, OTP_EXPIRY_MINUTES);
+      console.log("✅ OTP sent via email to:", email);
+    } catch (error) {
+      // Fallback: Log to console if email fails
+      console.error("❌ Email sending failed, logging OTP to console");
+      logOtpToConsole(email, otp, expiresAt);
+    }
 
-    return { message: "OTP sent (check console)" };
+    return { message: "OTP sent to your email" };
   }
 
   static async verifyOtp(email: string, otp: string): Promise<MessageResponse> {
@@ -119,7 +133,11 @@ export class AuthService {
   static async signup(email: string, password: string): Promise<AuthResponse> {
     console.log("🔍 Signup attempt for:", email);
     
-    // For direct signup without OTP (production mode)
+    // Check OTP verification
+    if (!otpVerified.has(email)) {
+      throw new Error("OTP verification required. Please verify your email first.");
+    }
+
     if (!isInstitutionalEmail(email)) {
       throw new Error("Invalid institutional email");
     }
@@ -151,6 +169,9 @@ export class AuthService {
         is_active: true,
       },
     });
+
+    // Clear OTP verification
+    otpVerified.delete(email);
 
     console.log("✅ Student signup successful");
 

@@ -368,7 +368,7 @@ const RegisterWithOTP = () => {
                   className={`h-11 rounded-lg text-center text-2xl tracking-widest ${errors.otp ? 'border-destructive' : ''}`}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Check your backend console for the OTP code
+                  Check your email for the OTP code
                 </p>
                 {errors.otp && (
                   <p className="text-xs text-destructive flex items-center gap-1">
