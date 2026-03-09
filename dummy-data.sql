@@ -21,7 +21,8 @@ INSERT INTO "FacultyNumber" (faculty_no, admission_year, branch_code, branch_nam
 ('GP2202', 2022, 'CSE', 'Computer Science & Engineering', '002', 'B.Tech'),
 ('GP2203', 2022, 'CSE', 'Computer Science & Engineering', '003', 'B.Tech'),
 ('GP2204', 2022, 'ECE', 'Electronics & Communication', '004', 'B.Tech'),
-('GP2205', 2022, 'ECE', 'Electronics & Communication', '005', 'B.Tech');
+('GP2205', 2022, 'ECE', 'Electronics & Communication', '005', 'B.Tech'),
+('GM7605', 2022, 'CSE', 'Computer Science & Engineering', '7605', 'B.Tech');
 
 -- ============================================
 -- 3. STUDENT ACCOUNTS
@@ -34,7 +35,8 @@ INSERT INTO "Student" (enrollment_no, faculty_no, name, email, password_hash, cu
 ('GF2202', 'GP2202', 'Priya Singh', 'gf2202@myamu.ac.in', '$2b$10$qkqyrpV.kiJGI/sjRlGsMObmeLB/yG1EhQ99rDT4SalRGbtcC6bzS', 4, 9.0, 'Hall 2', true),
 ('GF2203', 'GP2203', 'Amit Patel', 'gf2203@myamu.ac.in', '$2b$10$qkqyrpV.kiJGI/sjRlGsMObmeLB/yG1EhQ99rDT4SalRGbtcC6bzS', 4, 7.8, 'Hall 1', true),
 ('GF2204', 'GP2204', 'Sneha Reddy', 'gf2204@myamu.ac.in', '$2b$10$qkqyrpV.kiJGI/sjRlGsMObmeLB/yG1EhQ99rDT4SalRGbtcC6bzS', 4, 8.2, 'Hall 3', true),
-('GF2205', 'GP2205', 'Arjun Mehta', 'gf2205@myamu.ac.in', '$2b$10$qkqyrpV.kiJGI/sjRlGsMObmeLB/yG1EhQ99rDT4SalRGbtcC6bzS', 4, 8.7, 'Hall 2', true);
+('GF2205', 'GP2205', 'Arjun Mehta', 'gf2205@myamu.ac.in', '$2b$10$qkqyrpV.kiJGI/sjRlGsMObmeLB/yG1EhQ99rDT4SalRGbtcC6bzS', 4, 8.7, 'Hall 2', true),
+('GM7605', 'GM7605', 'Prityush Yadav', 'gm7605@myamu.ac.in', '$2b$10$qkqyrpV.kiJGI/sjRlGsMObmeLB/yG1EhQ99rDT4SalRGbtcC6bzS', 4, 8.3, 'Hall 1', true);
 
 -- ============================================
 -- 4. COURSES (Semester 4 - CSE)
@@ -103,6 +105,9 @@ INSERT INTO "CourseRegistration" (enrollment_no, course_code, academic_year, sem
 -- Password: password123
 --
 -- Email: gf2202@myamu.ac.in
+-- Password: password123
+--
+-- Email: gm7605@myamu.ac.in (Prityush Yadav)
 -- Password: password123
 --
 -- ============================================
