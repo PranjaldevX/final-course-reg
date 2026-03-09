@@ -85,6 +85,9 @@ export function formatTimeRemaining(expiresAt: Date): string {
 }
 
 export function logOtpToConsole(email: string, otp: string, expiresAt: Date): void {
+  // OTP logging disabled for production
+  // Uncomment below for development/debugging
+  /*
   console.log("\n" + "=".repeat(50));
   console.log("🔐 OTP GENERATED");
   console.log("=".repeat(50));
@@ -94,6 +97,7 @@ export function logOtpToConsole(email: string, otp: string, expiresAt: Date): vo
   console.log(`Expires:    ${expiresAt.toLocaleString()} (${OTP_EXPIRY_MINUTES} minutes)`);
   console.log(`Attempts:   0/${OTP_MAX_ATTEMPTS}`);
   console.log("=".repeat(50) + "\n");
+  */
 }
 
 /* ================= PASSWORD RESET HELPERS ================= */
@@ -129,6 +133,9 @@ export function getResetTokenExpiryTime(): Date {
 }
 
 export function logResetTokenToConsole(email: string, token: string, expiresAt: Date): void {
+  // Reset token logging disabled for production
+  // Uncomment below for development/debugging
+  /*
   console.log("\n" + "=".repeat(50));
   console.log("🔑 PASSWORD RESET TOKEN GENERATED");
   console.log("=".repeat(50));
@@ -138,6 +145,7 @@ export function logResetTokenToConsole(email: string, token: string, expiresAt: 
   console.log(`Expires:    ${expiresAt.toLocaleString()} (${RESET_TOKEN_EXPIRY_MINUTES} minutes)`);
   console.log(`Attempts:   0/${RESET_TOKEN_MAX_ATTEMPTS}`);
   console.log("=".repeat(50) + "\n");
+  */
 }
 
 /* ================= TOKEN BLACKLIST HELPERS ================= */
