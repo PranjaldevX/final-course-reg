@@ -15,8 +15,12 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:8080",
   "http://localhost:8081",
+  "http://localhost:5173",
+  "https://course-registration-new.netlify.app",
   process.env.FRONTEND_URL || "",
 ].filter(Boolean);
+
+console.log("🔧 Allowed CORS Origins:", allowedOrigins);
 
 app.use(
   cors({

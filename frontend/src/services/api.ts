@@ -3,8 +3,8 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 // =============================================================================
 // API CONFIGURATION
 // =============================================================================
-// Backend API base URL - temporarily hardcoded to fix env var issue
-const BASE_URL = 'http://localhost:5000';
+// Backend API base URL from environment variable
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 // Debug: Log the base URL to console
 console.log('🔧 API Base URL:', BASE_URL);
