@@ -117,35 +117,42 @@ export class AuthService {
   }
 
   static async signup(email: string, password: string): Promise<AuthResponse> {
-    if (!otpVerified.has(email)) {
-      throw new Error("OTP verification required");
+    console.log("🔍 Signup attempt for:", email);
+    
+    // For direct signup without OTP (production mode)
+    if (!isInstitutionalEmail(email)) {
+      throw new Error("Invalid institutional email");
     }
 
     const enrollmentNo = extractEnrollmentNo(email);
+    console.log("📝 Enrollment No:", enrollmentNo);
 
     const student = await prisma.student.findUnique({
       where: { enrollment_no: enrollmentNo },
     });
 
     if (!student) {
-      throw new Error("Student record not found");
+      console.log("❌ Student record not found");
+      throw new Error("Student record not found. Please contact admin.");
     }
 
     if (student.password_hash) {
-      throw new Error("Account already activated");
+      console.log("❌ Account already activated");
+      throw new Error("Account already activated. Please login.");
     }
 
+    console.log("✅ Creating password for student");
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await prisma.student.update({
       where: { enrollment_no: enrollmentNo },
       data: {
         password_hash: hashedPassword,
-        is_active: true, // Activate when password is set
+        is_active: true,
       },
     });
 
-    otpVerified.delete(email);
+    console.log("✅ Student signup successful");
 
     const token = jwt.sign(
       { enrollmentNo, role: "student" },
@@ -169,13 +176,18 @@ export class AuthService {
     password: string,
     rememberMe = false
   ): Promise<AuthResponse> {
+    console.log("🔍 Login attempt for:", email);
+    
     // Check if it's a TEACHER first (pre-created by admin)
     const teacher = await prisma.teacher.findUnique({
       where: { email },
     });
 
     if (teacher) {
+      console.log("👨‍🏫 Teacher found:", teacher.email);
+      
       if (!teacher.password_hash || !teacher.is_active) {
+        console.log("❌ Teacher inactive or no password");
         throw new Error("Invalid credentials");
       }
 
@@ -185,9 +197,12 @@ export class AuthService {
       );
 
       if (!match) {
+        console.log("❌ Password mismatch for teacher");
         throw new Error("Invalid credentials");
       }
 
+      console.log("✅ Teacher login successful");
+      
       const token = jwt.sign(
         { teacherId: teacher.teacher_id, role: teacher.role },
         JWT_SECRET,
@@ -206,14 +221,27 @@ export class AuthService {
     }
 
     // Otherwise, try STUDENT LOGIN
+    console.log("👨‍🎓 Checking student login");
+    
     if (isInstitutionalEmail(email)) {
       const enrollmentNo = extractEnrollmentNo(email);
+      console.log("📝 Enrollment No:", enrollmentNo);
 
       const student = await prisma.student.findUnique({
         where: { enrollment_no: enrollmentNo },
       });
 
-      if (!student || !student.password_hash || !student.is_active) {
+      if (!student) {
+        console.log("❌ Student not found");
+        throw new Error("Invalid credentials");
+      }
+
+      console.log("👨‍🎓 Student found:", student.email);
+      console.log("🔐 Has password:", !!student.password_hash);
+      console.log("✅ Is active:", student.is_active);
+
+      if (!student.password_hash) {
+        console.log("❌ No password set for student");
         throw new Error("Invalid credentials");
       }
 
@@ -223,8 +251,11 @@ export class AuthService {
       );
 
       if (!match) {
+        console.log("❌ Password mismatch for student");
         throw new Error("Invalid credentials");
       }
+
+      console.log("✅ Student login successful");
 
       const token = jwt.sign(
         { enrollmentNo, role: "student" },
@@ -243,6 +274,7 @@ export class AuthService {
       };
     }
 
+    console.log("❌ Invalid email format");
     throw new Error("Invalid credentials");
   }
 
