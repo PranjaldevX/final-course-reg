@@ -5,12 +5,14 @@ import { registerUser, getErrorMessage } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { GraduationCap, Users, AlertCircle, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 
 const AMU_LOGO_URL = "https://registration.fyup.amucoe.ac.in/assets/logo.png";
 
 const Register = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const [role, setRole] = useState<UserRole>('student');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,7 +82,15 @@ const Register = () => {
         role,
       });
 
-      setSuccessMessage(response.message || 'Registration successful! Redirecting to login...');
+      const message = response.message || 'Registration successful!';
+      setSuccessMessage(message);
+      
+      // Show success toast popup
+      toast({
+        title: 'Registration Successful! 🎉',
+        description: `${message} Redirecting to login page...`,
+        duration: 3000,
+      });
       
       // Redirect to login after 2 seconds
       setTimeout(() => {
@@ -89,6 +99,14 @@ const Register = () => {
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       setApiError(errorMessage);
+      
+      // Show error toast popup
+      toast({
+        title: 'Registration Failed',
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 5000,
+      });
     } finally {
       setIsSubmitting(false);
     }

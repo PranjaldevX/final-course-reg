@@ -5,6 +5,7 @@ import { getErrorMessage } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { GraduationCap, Users, AlertCircle, ArrowLeft, CheckCircle, Loader2, Mail, Key } from 'lucide-react';
 import axios from 'axios';
 
@@ -15,6 +16,7 @@ type RegistrationStep = 'email' | 'otp' | 'password';
 
 const RegisterWithOTP = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const [role, setRole] = useState<UserRole>('student');
   const [step, setStep] = useState<RegistrationStep>('email');
@@ -60,11 +62,28 @@ const RegisterWithOTP = () => {
 
     try {
       const response = await axios.post(`${API_BASE_URL}/api/auth/request-otp`, { email });
-      setSuccessMessage(response.data.message || 'OTP sent to your email');
+      const message = response.data.message || 'OTP sent to your email';
+      setSuccessMessage(message);
+      
+      // Show success toast
+      toast({
+        title: 'OTP Sent! 📧',
+        description: message,
+        duration: 3000,
+      });
+      
       setStep('otp');
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       setApiError(errorMessage);
+      
+      // Show error toast
+      toast({
+        title: 'Failed to Send OTP',
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 5000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -90,11 +109,28 @@ const RegisterWithOTP = () => {
 
     try {
       const response = await axios.post(`${API_BASE_URL}/api/auth/verify-otp`, { email, otp });
-      setSuccessMessage(response.data.message || 'OTP verified successfully');
+      const message = response.data.message || 'OTP verified successfully';
+      setSuccessMessage(message);
+      
+      // Show success toast
+      toast({
+        title: 'OTP Verified! ✅',
+        description: message,
+        duration: 3000,
+      });
+      
       setStep('password');
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       setApiError(errorMessage);
+      
+      // Show error toast
+      toast({
+        title: 'OTP Verification Failed',
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 5000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -132,7 +168,15 @@ const RegisterWithOTP = () => {
         confirmPassword,
       });
 
-      setSuccessMessage('Registration successful! Redirecting to login...');
+      const message = 'Registration successful!';
+      setSuccessMessage(message);
+      
+      // Show success toast popup
+      toast({
+        title: 'Registration Successful! 🎉',
+        description: `${message} Redirecting to login page...`,
+        duration: 3000,
+      });
       
       // Redirect to login after 2 seconds
       setTimeout(() => {
@@ -141,6 +185,14 @@ const RegisterWithOTP = () => {
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       setApiError(errorMessage);
+      
+      // Show error toast popup
+      toast({
+        title: 'Registration Failed',
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 5000,
+      });
     } finally {
       setIsSubmitting(false);
     }

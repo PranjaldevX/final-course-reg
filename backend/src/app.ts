@@ -12,9 +12,15 @@ import registrationControlRoutes from "./routes/registration-control.routes";
 const app = express();
 
 // CORS Configuration - Expanded for file uploads
+const allowedOrigins = [
+  "http://localhost:8080",
+  "http://localhost:8081",
+  process.env.FRONTEND_URL || "",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: ["http://localhost:8080", "http://localhost:8081"],
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
