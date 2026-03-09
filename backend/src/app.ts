@@ -39,6 +39,23 @@ app.use((req, res, next) => {
 
 console.log("Mounting routes...");
 
+// Root route
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "Course Registration API",
+    status: "running",
+    endpoints: {
+      health: "/test",
+      auth: "/api/auth",
+      student: "/api/student",
+      courses: "/api/courses",
+      teacher: "/api/teacher",
+      upload: "/api/admin/upload",
+      registrationControl: "/api/registration-control"
+    }
+  });
+});
+
 // Health check route
 app.get("/test", (req, res) => {
   res.json({ message: "Server is running" });
