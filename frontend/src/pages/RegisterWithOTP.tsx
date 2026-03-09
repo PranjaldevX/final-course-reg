@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserRole } from '@/context/AuthContext';
 import { getErrorMessage } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { GraduationCap, Users, AlertCircle, ArrowLeft, CheckCircle, Loader2, Mail, Key } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Mail, Key } from 'lucide-react';
 import axios from 'axios';
 
 const AMU_LOGO_URL = "https://registration.fyup.amucoe.ac.in/assets/logo.png";
@@ -18,7 +17,6 @@ const RegisterWithOTP = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [role, setRole] = useState<UserRole>('student');
   const [step, setStep] = useState<RegistrationStep>('email');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -31,15 +29,14 @@ const RegisterWithOTP = () => {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleRoleChange = (newRole: UserRole) => {
-    setRole(newRole);
-    setErrors({});
-    setApiError(null);
+  const resetForm = () => {
     setStep('email');
     setEmail('');
     setOtp('');
     setPassword('');
     setConfirmPassword('');
+    setErrors({});
+    setApiError(null);
   };
 
   // Step 1: Request OTP
@@ -254,34 +251,11 @@ const RegisterWithOTP = () => {
             </div>
           </div>
 
-          {/* Role Toggle */}
-          <div className="grid grid-cols-2 gap-1 mb-6 p-1 bg-muted rounded-xl">
-            <button
-              type="button"
-              onClick={() => handleRoleChange('student')}
-              disabled={isSubmitting || step !== 'email'}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg font-medium text-sm transition-all duration-300 ${
-                role === 'student'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <GraduationCap className="h-4 w-4" />
-              <span>Student</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRoleChange('faculty')}
-              disabled={isSubmitting || step !== 'email'}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg font-medium text-sm transition-all duration-300 ${
-                role === 'faculty'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              <span>Faculty</span>
-            </button>
+          {/* Info Message */}
+          <div className="mb-6 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Student Registration:</strong> Enter your institutional email to receive an OTP and set up your password.
+            </p>
           </div>
 
           {/* Success Message */}
